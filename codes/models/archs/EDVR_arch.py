@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import models.archs.arch_util as arch_util
+import models.archs.CBAM_arch as CBAM_util
 try:
     from models.archs.dcn.deform_conv import ModulatedDeformConvPack as DCN
 except ImportError:
@@ -203,15 +204,55 @@ class TSA_Fusion(nn.Module):
         return fea
 
 
+class TCSA_Fusion(nn.Module):
+    ''' Temporal Channel Spatial Attention fusion module.
+    '''
+    def __init__(self, reduction_ratio, nf=64, nframes=5, center=2):
+        self.center = center
+        self.tAtt_1 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+        self.tAtt_2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+
+        # fusion conv: using 1x1 to save parameters and computation
+        self.fea_fusion = nn.Conv2d(nframes * nf, nf, 1, 1, bias=True)
+
+        #### channel and spatial module
+        self.CBAM = CBAM_util.CBAM(nf, reduction_ratio=reduction_ratio)
+        self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
+
+    def forward(self, aligned_fea):
+        B, N, C, H, W = aligned_fea.size()
+        #### temporal attention
+        emb_ref = self.tAtt_2(aligned_fea[:, self.center, :, :, :].clone())  # [B, C(nf), H, W]
+        embs = self.tAtt_1(aligned_fea.view(-1, C, H, W)).view(B, N, -1, H, W)  # [BxN, C, H, W]
+        cor_l = []
+        for i in range(N):
+            emb_nbr = embs[:, i, :, :, :]  # [B, C, H, W]
+            cor_tmp = torch.sum(emb_ref * emb_nbr, dim=1).unsqueeze(1)  # [B, H, W] --> [B, 1, H, W]
+            cor_l.append(cor_tmp)  # [[B, 1, H, W], [B, 1, H, W]]
+        cor_prob = torch.sigmoid(torch.cat(cor_l, dim=1))  # [B, N, H, W]
+        # [B, N, 1, H, W]  --> [B, N, C, H, W] --> [BxN, C, H, W]
+        cor_prob = cor_prob.unsqueeze(2).repeat(1, 1, C, 1, 1).view(B, -1, H, W)
+        aligned_fea = cor_prob * aligned_fea.view(B, -1, H, W)
+
+        #### fusion
+        fea = self.lrelu(self.fea_fusion(aligned_fea))
+
+        #### channel and spatial attention
+        att_fea = self.CBAM(fea)
+        return att_fea
+
+
 class EDVR(nn.Module):
-    def __init__(self, nf=64, nframes=5, groups=8, front_RBs=5, back_RBs=10, center=None,
-                 predeblur=False, HR_in=False, w_TSA=True):
+    def __init__(self, reduction_ratio=4, nf=64, nframes=5, groups=8, front_RBs=5, back_RBs=10, center=None,
+                 predeblur=False, HR_in=False, w_TSA=True, w_TCSA=True):
         super(EDVR, self).__init__()
+        self.reduction_ratio = reduction_ratio
         self.nf = nf
         self.center = nframes // 2 if center is None else center
         self.is_predeblur = True if predeblur else False
         self.HR_in = True if HR_in else False
         self.w_TSA = w_TSA
+        self.w_TCSA = w_TCSA
         ResidualBlock_noBN_f = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
 
         #### extract features (for each frame)
@@ -233,9 +274,14 @@ class EDVR(nn.Module):
 
         self.pcd_align = PCD_Align(nf=nf, groups=groups)
         if self.w_TSA:
-            self.tsa_fusion = TSA_Fusion(nf=nf, nframes=nframes, center=self.center)
+            self.fusion = TSA_Fusion(nf=nf, nframes=nframes, center=self.center)
+            # self.tsa_fusion = TSA_Fusion(nf=nf, nframes=nframes, center=self.center)
+        elif self.w_TCSA:
+            self.fusion = TCSA_Fusion(nf=nf, reduction_ratio=self.reduction_ratio)
+            # self.tcsa_fusion = TCSA_Fusion(nf=nf, reduction_ratio=self.reduction_ratio)
         else:
-            self.tsa_fusion = nn.Conv2d(nframes * nf, nf, 1, 1, bias=True)
+            self.fusion = nn.Conv2d(nframes * nf, nf, 1, 1, bias=True)
+            # self.tsa_fusion = nn.Conv2d(nframes * nf, nf, 1, 1, bias=True)
 
         #### reconstruction
         self.recon_trunk = arch_util.make_layer(ResidualBlock_noBN_f, back_RBs)
@@ -297,7 +343,8 @@ class EDVR(nn.Module):
 
         if not self.w_TSA:
             aligned_fea = aligned_fea.view(B, -1, H, W)
-        fea = self.tsa_fusion(aligned_fea)
+        # fea = self.tsa_fusion(aligned_fea)
+        fea = self.fusion(aligned_fea)
 
         out = self.recon_trunk(fea)
         out = self.lrelu(self.pixel_shuffle(self.upconv1(out)))
