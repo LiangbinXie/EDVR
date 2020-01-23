@@ -208,6 +208,7 @@ class TCSA_Fusion(nn.Module):
     ''' Temporal Channel Spatial Attention fusion module.
     '''
     def __init__(self, reduction_ratio, nf=64, nframes=5, center=2):
+        super(TCSA_Fusion, self).__init__()
         self.center = center
         self.tAtt_1 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
         self.tAtt_2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
