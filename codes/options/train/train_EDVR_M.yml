@@ -4,7 +4,7 @@ use_tb_logger: true
 model: video_base
 distortion: sr
 scale: 4
-gpu_ids: [0,1,2,3,4,5,6,7]
+gpu_ids: [0,1,2,3]
 
 #### datasets
 datasets:
@@ -14,8 +14,8 @@ datasets:
     interval_list: [1]
     random_reverse: false
     border_mode: false
-    dataroot_GT: ../datasets/REDS/train_sharp_wval.lmdb
-    dataroot_LQ: ../datasets/REDS/train_sharp_bicubic_wval.lmdb
+    dataroot_GT: /data1/lbxie/Datasets/VSR_datasets/REDS/train_sharp_wval.lmdb
+    dataroot_LQ: /data1/lbxie/Datasets/VSR_datasets/REDS/train_sharp_bicubic_wval.lmdb
     cache_keys: ~
 
     N_frames: 5
@@ -30,8 +30,8 @@ datasets:
   val:
     name: REDS4
     mode: video_test
-    dataroot_GT: ../datasets/REDS4/GT
-    dataroot_LQ: ../datasets/REDS4/sharp_bicubic
+    dataroot_GT: /data1/lbxie/Datasets/VSR_datasets/REDS4/GT
+    dataroot_LQ: /data1/lbxie/Datasets/VSR_datasets/REDS4/sharp_bicubic
     cache_data: True
     N_frames: 5
     padding: new_info
@@ -50,7 +50,8 @@ network_G:
 
 #### path
 path:
-  pretrain_model_G: ../experiments/pretrained_models/EDVR_REDS_SR_M_woTSA.pth
+  # pretrain_model_G: ../experiments/pretrained_models/EDVR_REDS_SR_M_woTSA.pth
+  pretrain_model_G: ~
   strict_load: false
   resume_state: ~
 

@@ -341,7 +341,7 @@ class EDVR(nn.Module):
             aligned_fea.append(self.pcd_align(nbr_fea_l, ref_fea_l))
         aligned_fea = torch.stack(aligned_fea, dim=1)  # [B, N, C, H, W]
 
-        if not self.w_TSA:
+        if not self.w_TSA or not self.w_TCSA:
             aligned_fea = aligned_fea.view(B, -1, H, W)
         # fea = self.tsa_fusion(aligned_fea)
         fea = self.fusion(aligned_fea)
