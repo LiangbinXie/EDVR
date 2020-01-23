@@ -344,6 +344,7 @@ class EDVR(nn.Module):
 
         if not self.w_TSA or not self.w_TCSA:
             aligned_fea = aligned_fea.view(B, -1, H, W)
+            print(aligned_fea.size())
         # fea = self.tsa_fusion(aligned_fea)
         fea = self.fusion(aligned_fea)
 
