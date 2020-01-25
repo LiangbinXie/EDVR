@@ -20,8 +20,8 @@ def main():
     # configurations
     #################
     device = torch.device('cuda')
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-    data_mode = 'Vid4'  # Vid4 | sharp_bicubic | blur_bicubic | blur | blur_comp
+    os.environ['CUDA_VISIBLE_DEVICES'] = '8'
+    data_mode = 'sharp_bicubic'  # Vid4 | sharp_bicubic | blur_bicubic | blur | blur_comp
     # Vid4: SR
     # REDS4: sharp_bicubic (SR-clean), blur_bicubic (SR-blur);
     #        blur (deblur-clean), blur_comp (deblur-compression).
@@ -36,7 +36,8 @@ def main():
             raise ValueError('Vid4 does not support stage 2.')
     elif data_mode == 'sharp_bicubic':
         if stage == 1:
-            model_path = '../experiments/pretrained_models/EDVR_REDS_SR_L.pth'
+            # model_path = '../experiments/pretrained_models/EDVR_REDS_SR_L.pth'
+            model_path = '../experiments/pretrained_models/EDVR_REDS_SR_M.pth'
         else:
             model_path = '../experiments/pretrained_models/EDVR_REDS_SR_Stage2.pth'
     elif data_mode == 'blur_bicubic':
@@ -63,7 +64,7 @@ def main():
         N_in = 5
 
     predeblur, HR_in = False, False
-    back_RBs = 40
+    back_RBs = 10
     if data_mode == 'blur_bicubic':
         predeblur = True
     if data_mode == 'blur' or data_mode == 'blur_comp':
@@ -71,19 +72,21 @@ def main():
     if stage == 2:
         HR_in = True
         back_RBs = 20
-    model = EDVR_arch.EDVR(128, N_in, 8, 5, back_RBs, predeblur=predeblur, HR_in=HR_in)
+    reduction_ratio = 4
+    nf = 64
+    model = EDVR_arch.EDVR(reduction_ratio, nf, N_in, 8, 5, back_RBs, predeblur=predeblur, HR_in=HR_in)
 
     #### dataset
     if data_mode == 'Vid4':
-        test_dataset_folder = '../datasets/Vid4/BIx4'
-        GT_dataset_folder = '../datasets/Vid4/GT'
+        test_dataset_folder = '/data1/lbxie/Datasets/VSR_datasets/Vid4/BIx4'
+        GT_dataset_folder = '/data1/lbxie/Datasets/VSR_datasets/Vid4/GT'
     else:
         if stage == 1:
-            test_dataset_folder = '../datasets/REDS4/{}'.format(data_mode)
+            test_dataset_folder = '/data1/lbxie/Datasets/VSR_datasets/REDS4/{}'.format(data_mode)
         else:
             test_dataset_folder = '../results/REDS-EDVR_REDS_SR_L_flipx4'
             print('You should modify the test_dataset_folder path for stage 2')
-        GT_dataset_folder = '../datasets/REDS4/GT'
+        GT_dataset_folder = '/data1/lbxie/Datasets/VSR_datasets/REDS4/GT'
 
     #### evaluation
     crop_border = 0
