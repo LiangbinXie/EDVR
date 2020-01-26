@@ -73,7 +73,7 @@ class ResidualBlock_noBN_CSA(nn.Module):
 
     def forward(self, x):
         residual = x
-        out = F.relu(self.conv(x), inplace=True)
+        out = F.relu(self.conv1(x), inplace=True)
         out = self.conv2(out)
         if self.cbam is not None:
             out = self.cbam(out)
