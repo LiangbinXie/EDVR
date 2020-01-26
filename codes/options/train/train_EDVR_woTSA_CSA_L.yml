@@ -48,8 +48,6 @@ network_G:
   predeblur: false
   HR_in: false
   w_TSA: false
-  w_TCSA: false
-  w_CSA: false
 
 
 #### path
