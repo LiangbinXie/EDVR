@@ -204,56 +204,56 @@ class TSA_Fusion(nn.Module):
         return fea
 
 
-class TCSA_Fusion(nn.Module):
-    ''' Temporal Channel Spatial Attention fusion module.
-    '''
-    def __init__(self, reduction_ratio, nf=64, nframes=5, center=2):
-        self.center = center
-        self.tAtt_1 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
-        self.tAtt_2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
-
-        # fusion conv: using 1x1 to save parameters and computation
-        self.fea_fusion = nn.Conv2d(nframes * nf, nf, 1, 1, bias=True)
-
-        #### channel and spatial module
-        self.CBAM = CBAM_util.CBAM(nf, reduction_ratio=reduction_ratio)
-        self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
-
-    def forward(self, aligned_fea):
-        B, N, C, H, W = aligned_fea.size()
-        #### temporal attention
-        emb_ref = self.tAtt_2(aligned_fea[:, self.center, :, :, :].clone())  # [B, C(nf), H, W]
-        embs = self.tAtt_1(aligned_fea.view(-1, C, H, W)).view(B, N, -1, H, W)  # [BxN, C, H, W]
-        cor_l = []
-        for i in range(N):
-            emb_nbr = embs[:, i, :, :, :]  # [B, C, H, W]
-            cor_tmp = torch.sum(emb_ref * emb_nbr, dim=1).unsqueeze(1)  # [B, H, W] --> [B, 1, H, W]
-            cor_l.append(cor_tmp)  # [[B, 1, H, W], [B, 1, H, W]]
-        cor_prob = torch.sigmoid(torch.cat(cor_l, dim=1))  # [B, N, H, W]
-        # [B, N, 1, H, W]  --> [B, N, C, H, W] --> [BxN, C, H, W]
-        cor_prob = cor_prob.unsqueeze(2).repeat(1, 1, C, 1, 1).view(B, -1, H, W)
-        aligned_fea = cor_prob * aligned_fea.view(B, -1, H, W)
-
-        #### fusion
-        fea = self.lrelu(self.fea_fusion(aligned_fea))
-
-        #### channel and spatial attention
-        att_fea = self.CBAM(fea)
-        return att_fea
+# class TCSA_Fusion(nn.Module):
+#     ''' Temporal Channel Spatial Attention fusion module.
+#     '''
+#     def __init__(self, reduction_ratio, nf=64, nframes=5, center=2):
+#         self.center = center
+#         self.tAtt_1 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+#         self.tAtt_2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+#
+#         # fusion conv: using 1x1 to save parameters and computation
+#         self.fea_fusion = nn.Conv2d(nframes * nf, nf, 1, 1, bias=True)
+#
+#         #### channel and spatial module
+#         self.CBAM = CBAM_util.CBAM(nf, reduction_ratio=reduction_ratio)
+#         self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
+#
+#     def forward(self, aligned_fea):
+#         B, N, C, H, W = aligned_fea.size()
+#         #### temporal attention
+#         emb_ref = self.tAtt_2(aligned_fea[:, self.center, :, :, :].clone())  # [B, C(nf), H, W]
+#         embs = self.tAtt_1(aligned_fea.view(-1, C, H, W)).view(B, N, -1, H, W)  # [BxN, C, H, W]
+#         cor_l = []
+#         for i in range(N):
+#             emb_nbr = embs[:, i, :, :, :]  # [B, C, H, W]
+#             cor_tmp = torch.sum(emb_ref * emb_nbr, dim=1).unsqueeze(1)  # [B, H, W] --> [B, 1, H, W]
+#             cor_l.append(cor_tmp)  # [[B, 1, H, W], [B, 1, H, W]]
+#         cor_prob = torch.sigmoid(torch.cat(cor_l, dim=1))  # [B, N, H, W]
+#         # [B, N, 1, H, W]  --> [B, N, C, H, W] --> [BxN, C, H, W]
+#         cor_prob = cor_prob.unsqueeze(2).repeat(1, 1, C, 1, 1).view(B, -1, H, W)
+#         aligned_fea = cor_prob * aligned_fea.view(B, -1, H, W)
+#
+#         #### fusion
+#         fea = self.lrelu(self.fea_fusion(aligned_fea))
+#
+#         #### channel and spatial attention
+#         att_fea = self.CBAM(fea)
+#         return att_fea
 
 
 class EDVR(nn.Module):
-    def __init__(self, reduction_ratio=4, nf=64, nframes=5, groups=8, front_RBs=5, back_RBs=10, center=None,
+    def __init__(self, nf=64, nframes=5, groups=8, front_RBs=5, back_RBs=10, center=None,
                  predeblur=False, HR_in=False, w_TSA=True, w_TCSA=True):
         super(EDVR, self).__init__()
-        self.reduction_ratio = reduction_ratio
         self.nf = nf
         self.center = nframes // 2 if center is None else center
         self.is_predeblur = True if predeblur else False
         self.HR_in = True if HR_in else False
         self.w_TSA = w_TSA
         self.w_TCSA = w_TCSA
-        ResidualBlock_noBN_f = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
+        # ResidualBlock_noBN_f = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
+        ResidualBlock_noBN_CSA_f = functools.partial(arch_util.ResidualBlock_noBN_CSA, nf=nf)
 
         #### extract features (for each frame)
         if self.is_predeblur:
@@ -266,7 +266,8 @@ class EDVR(nn.Module):
                 self.conv_first_3 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
             else:
                 self.conv_first = nn.Conv2d(3, nf, 3, 1, 1, bias=True)
-        self.feature_extraction = arch_util.make_layer(ResidualBlock_noBN_f, front_RBs)
+        # self.feature_extraction = arch_util.make_layer(ResidualBlock_noBN_f, front_RBs)
+        self.feature_extraction = arch_util.make_layer(ResidualBlock_noBN_CSA_f, front_RBs)
         self.fea_L2_conv1 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
         self.fea_L2_conv2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
         self.fea_L3_conv1 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
@@ -276,15 +277,16 @@ class EDVR(nn.Module):
         if self.w_TSA:
             self.fusion = TSA_Fusion(nf=nf, nframes=nframes, center=self.center)
             # self.tsa_fusion = TSA_Fusion(nf=nf, nframes=nframes, center=self.center)
-        elif self.w_TCSA:
-            self.fusion = TCSA_Fusion(nf=nf, reduction_ratio=self.reduction_ratio)
+        # elif self.w_TCSA:
+        #     self.fusion = TCSA_Fusion(nf=nf, reduction_ratio=self.reduction_ratio)
             # self.tcsa_fusion = TCSA_Fusion(nf=nf, reduction_ratio=self.reduction_ratio)
         else:
             self.fusion = nn.Conv2d(nframes * nf, nf, 1, 1, bias=True)
             # self.tsa_fusion = nn.Conv2d(nframes * nf, nf, 1, 1, bias=True)
 
         #### reconstruction
-        self.recon_trunk = arch_util.make_layer(ResidualBlock_noBN_f, back_RBs)
+        # self.recon_trunk = arch_util.make_layer(ResidualBlock_noBN_f, back_RBs)
+        self.recon_trunk = arch_util.make_layer(ResidualBlock_noBN_CSA_f, back_RBs)
         #### upsampling
         self.upconv1 = nn.Conv2d(nf, nf * 4, 3, 1, 1, bias=True)
         self.upconv2 = nn.Conv2d(nf, 64 * 4, 3, 1, 1, bias=True)

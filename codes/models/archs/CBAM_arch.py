@@ -7,6 +7,7 @@ date: 2020/1/20
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
+from torch.nn import init
 
 
 class BasicConv(nn.Module):
@@ -61,7 +62,7 @@ class ChannelGate(nn.Module):
             else:
                 channel_att_sum = channel_att_sum + channel_att_raw
 
-        scale = F.sigmoid( channel_att_sum ).unsqueeze(2).unsqueeze(3).expand_as(x)
+        scale = torch.sigmoid( channel_att_sum ).unsqueeze(2).unsqueeze(3).expand_as(x)
         # [B, C, 1, 1] --> [B, C, H, W]
         return x * scale
 
@@ -81,7 +82,7 @@ class SpatialGate(nn.Module):
     def forward(self, x):
         x_compress = self.compress(x)
         x_out = self.spatial(x_compress)
-        scale = F.sigmoid(x_out) # broadcasting
+        scale = torch.sigmoid(x_out) # broadcasting
         return x * scale
 
 
@@ -92,6 +93,19 @@ class CBAM(nn.Module):
         self.no_spatial=no_spatial
         if not no_spatial:
             self.SpatialGate = SpatialGate()
+
+        for key in self.state_dict():
+            print(key)
+            if key.split('.')[-1] == "weight":
+                if "conv" in key:
+                    init.kaiming_normal(self.state_dict()[key], mode='fan_out')
+                if "bn" in key:
+                    if "SpatialGate" in key:
+                        self.state_dict()[key][...] = 0
+                    else:
+                        self.state_dict()[key][...] = 1
+            elif key.split('.')[-1] == 'bias':
+                self.state_dict()[key][...] = 0
 
     def forward(self, x):
         x_out = self.ChannelGate(x)
@@ -108,3 +122,6 @@ if __name__ == '__main__':
     CBAM_arch = CBAM(128)
     att_fea = CBAM_arch(feas)
     print(type(att_fea))
+    # for name, parameter in CBAM_arch.named_parameters():
+    #     print(name)
+

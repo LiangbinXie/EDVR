@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
+from models.archs.CBAM_arch import *
 
 
 def initialize_weights(net_l, scale=1):
@@ -50,6 +51,34 @@ class ResidualBlock_noBN(nn.Module):
         out = F.relu(self.conv1(x), inplace=True)
         out = self.conv2(out)
         return identity + out
+
+
+class ResidualBlock_noBN_CSA(nn.Module):
+    ''' Residual block w/o BN with channel and spatial module.
+    '''
+    expansion = 1
+
+    def __init__(self, nf=64, downsample=None, use_cbam=False):
+        super(ResidualBlock_noBN_CSA, self).__init__()
+        self.conv1 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+        self.conv2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+        self.downsample = downsample
+        if use_cbam:
+            self.cbam = CBAM(nf, 16)
+        else:
+            self.cbam = None
+
+        # initialization
+        initialize_weights([self.conv1, self.conv2])
+
+    def forward(self, x):
+        residual = x
+        out = F.relu(self.conv(x), inplace=True)
+        out = self.conv2(out)
+        if self.cbam is not None:
+            out = self.cbam(out)
+        out += residual
+        return F.relu(out, inplace=True)
 
 
 def flow_warp(x, flow, interp_mode='bilinear', padding_mode='zeros'):
