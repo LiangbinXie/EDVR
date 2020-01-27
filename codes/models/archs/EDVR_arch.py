@@ -254,10 +254,13 @@ class EDVR(nn.Module):
         self.w_TSA = w_TSA
         self.w_TCSA = w_TCSA
 
+        ResidualBlock_noBN_f = arch_util.ResidualBlock_noBN
+        ResidualBlock_noBN_CA_f = arch_util.ResidualBlock_noBN_CA
+
         if basic_RBs == 'ResidualBlock_noBN':
-            self.ResidualBlock = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
+            self.ResidualBlock = functools.partial(ResidualBlock_noBN_f, nf=nf)
         elif basic_RBs == 'ResidualBlock_noBN_CA':
-            self.ResidualBlock = functools.partial(arch_util.ResidualBlock_noBN_CA, nf=nf)
+            self.ResidualBlock = functools.partial(ResidualBlock_noBN_CA_f, nf=nf)
 
         #### extract features (for each frame)
         if self.is_predeblur:
@@ -271,7 +274,7 @@ class EDVR(nn.Module):
             else:
                 self.conv_first = nn.Conv2d(3, nf, 3, 1, 1, bias=True)
         # self.feature_extraction = arch_util.make_layer(ResidualBlock_noBN_f, front_RBs)
-        self.feature_extraction = arch_util.make_layer(self.ResidualBlock, front_RBs)
+        self.feature_extraction = arch_util.make_layer(ResidualBlock_noBN_f, front_RBs)
         self.fea_L2_conv1 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
         self.fea_L2_conv2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
         self.fea_L3_conv1 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
