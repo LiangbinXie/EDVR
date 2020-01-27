@@ -257,7 +257,7 @@ class EDVR(nn.Module):
         if basic_RBs == 'ResidualBlock_noBN':
             self.ResidualBlock = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
         elif basic_RBs == 'ResidualBlock_noBN_CA':
-            self.ResidualBlock = functools.partial(arch_util.ResidualBlock_noBN_CA, nf=nf, use_cbam=True, no_spatial=True)
+            self.ResidualBlock = functools.partial(arch_util.ResidualBlock_noBN_CA, nf=nf)
 
         #### extract features (for each frame)
         if self.is_predeblur:
