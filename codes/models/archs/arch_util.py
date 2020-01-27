@@ -58,13 +58,13 @@ class ResidualBlock_noBN_CSA(nn.Module):
     '''
     expansion = 1
 
-    def __init__(self, nf=64, downsample=None, use_cbam=False):
+    def __init__(self, nf=64, downsample=None, use_cbam=False, no_spatial=False):
         super(ResidualBlock_noBN_CSA, self).__init__()
         self.conv1 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
         self.conv2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
         self.downsample = downsample
         if use_cbam:
-            self.cbam = CBAM(nf, 16)
+            self.cbam = CBAM(nf, 16, no_spatial)
         else:
             self.cbam = None
 

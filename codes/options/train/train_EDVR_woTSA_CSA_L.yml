@@ -43,6 +43,7 @@ network_G:
   nf: 128
   nframes: 5
   groups: 8
+  basic_RBs: ResidualBlock_noBN_CSA
   front_RBs: 5
   back_RBs: 40
   predeblur: false

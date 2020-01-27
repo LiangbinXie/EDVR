@@ -122,6 +122,5 @@ if __name__ == '__main__':
     CBAM_arch = CBAM(128)
     att_fea = CBAM_arch(feas)
     print(type(att_fea))
-    # for name, parameter in CBAM_arch.named_parameters():
-    #     print(name)
-
+    for net in CBAM_arch.modules():
+        print(net)
