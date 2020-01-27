@@ -260,7 +260,7 @@ class EDVR(nn.Module):
             self.ResidualBlock = functools.partial(arch_util.ResidualBlock_noBN_CSA, nf=nf, use_cbam=True, no_spatial=True)
         # ResidualBlock_noBN_f = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
         # ResidualBlock_noBN_CSA_f = functools.partial(arch_util.ResidualBlock_noBN_CSA, nf=nf)
-        pdb.set_trace()
+
         #### extract features (for each frame)
         if self.is_predeblur:
             self.pre_deblur = Predeblur_ResNet_Pyramid(nf=nf, HR_in=self.HR_in)
