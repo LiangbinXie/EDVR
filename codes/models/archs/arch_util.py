@@ -64,7 +64,7 @@ class ResidualBlock_noBN_CSA(nn.Module):
         self.conv2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
         self.downsample = downsample
         if use_cbam:
-            self.cbam = CBAM(nf, 16, no_spatial)
+            self.cbam = CBAM(gate_channels=nf, reduction_ratio=16, no_spatial=no_spatial)
         else:
             self.cbam = None
 
