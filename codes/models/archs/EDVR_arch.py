@@ -10,6 +10,7 @@ try:
 except ImportError:
     raise ImportError('Failed to import DCNv2 module.')
 
+import pdb
 
 class Predeblur_ResNet_Pyramid(nn.Module):
     def __init__(self, nf=128, HR_in=False):
@@ -252,15 +253,14 @@ class EDVR(nn.Module):
         self.HR_in = True if HR_in else False
         self.w_TSA = w_TSA
         self.w_TCSA = w_TCSA
-        self.basic_RBs = basic_RBs
 
-        if self.basic_RBs == 'ResidualBlock_noBN':
+        if basic_RBs == 'ResidualBlock_noBN':
             self.ResidualBlock = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
-        elif self.basic_RBs == 'ResidualBlock_noBN_CSA':
+        elif basic_RBs == 'ResidualBlock_noBN_CSA':
             self.ResidualBlock = functools.partial(arch_util.ResidualBlock_noBN_CSA, nf=nf, use_cbam=True, no_spatial=True)
         # ResidualBlock_noBN_f = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
         # ResidualBlock_noBN_CSA_f = functools.partial(arch_util.ResidualBlock_noBN_CSA, nf=nf)
-
+        pdb.set_trace()
         #### extract features (for each frame)
         if self.is_predeblur:
             self.pre_deblur = Predeblur_ResNet_Pyramid(nf=nf, HR_in=self.HR_in)
