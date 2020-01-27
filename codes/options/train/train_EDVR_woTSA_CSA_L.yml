@@ -45,7 +45,7 @@ network_G:
   groups: 8
   basic_RBs: ResidualBlock_noBN_CA
   front_RBs: 5
-  back_RBs: 30
+  back_RBs: 10
   predeblur: false
   HR_in: false
   w_TSA: false
@@ -53,7 +53,7 @@ network_G:
 
 #### path
 path:
-  pretrain_model_G: ../experiments/pretrained_models/5000_G.pth
+  pretrain_model_G: ~
   strict_load: true
   resume_state: ~
 
