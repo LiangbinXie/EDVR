@@ -255,9 +255,9 @@ class EDVR(nn.Module):
         self.basic_RBs = basic_RBs
 
         if self.basic_RBs == 'ResidualBlock_noBN':
-            ResidualBlock = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
+            self.ResidualBlock = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
         elif self.basic_RBs == 'ResidualBlock_noBN_CSA':
-            ResidualBlock = functools.partial(arch_util.ResidualBlock_noBN_CSA, nf=nf, use_cbam=True, no_spatial=True)
+            self.ResidualBlock = functools.partial(arch_util.ResidualBlock_noBN_CSA, nf=nf, use_cbam=True, no_spatial=True)
         # ResidualBlock_noBN_f = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
         # ResidualBlock_noBN_CSA_f = functools.partial(arch_util.ResidualBlock_noBN_CSA, nf=nf)
 
@@ -273,7 +273,7 @@ class EDVR(nn.Module):
             else:
                 self.conv_first = nn.Conv2d(3, nf, 3, 1, 1, bias=True)
         # self.feature_extraction = arch_util.make_layer(ResidualBlock_noBN_f, front_RBs)
-        self.feature_extraction = arch_util.make_layer(ResidualBlock, front_RBs)
+        self.feature_extraction = arch_util.make_layer(self.ResidualBlock, front_RBs)
         self.fea_L2_conv1 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
         self.fea_L2_conv2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
         self.fea_L3_conv1 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
@@ -292,7 +292,7 @@ class EDVR(nn.Module):
 
         #### reconstruction
         # self.recon_trunk = arch_util.make_layer(ResidualBlock_noBN_f, back_RBs)
-        self.recon_trunk = arch_util.make_layer(ResidualBlock, back_RBs)
+        self.recon_trunk = arch_util.make_layer(self.ResidualBlock, back_RBs)
         #### upsampling
         self.upconv1 = nn.Conv2d(nf, nf * 4, 3, 1, 1, bias=True)
         self.upconv2 = nn.Conv2d(nf, 64 * 4, 3, 1, 1, bias=True)
