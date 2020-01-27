@@ -323,7 +323,6 @@ class EDVR(nn.Module):
             else:
                 L1_fea = self.lrelu(self.conv_first(x.view(-1, C, H, W)))
 
-        pdb.set_trace()
         L1_fea = self.feature_extraction(L1_fea)
         # L2
         L2_fea = self.lrelu(self.fea_L2_conv1(L1_fea))
