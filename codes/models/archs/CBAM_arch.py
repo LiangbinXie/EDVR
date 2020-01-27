@@ -95,7 +95,6 @@ class CBAM(nn.Module):
             self.SpatialGate = SpatialGate()
 
         for key in self.state_dict():
-            print(key)
             if key.split('.')[-1] == "weight":
                 if "conv" in key:
                     init.kaiming_normal(self.state_dict()[key], mode='fan_out')

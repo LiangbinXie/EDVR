@@ -1,5 +1,5 @@
 #### general settings
-name: 006_EDVRwoTSA_CSA_scratch_lr4e-4_600k_REDS_LrCAR4S
+name: 006_EDVRwoTSA_CA_scratch_lr4e-4_600k_REDS_LrCAR4S
 use_tb_logger: true
 model: video_base
 distortion: sr
@@ -43,7 +43,7 @@ network_G:
   nf: 128
   nframes: 5
   groups: 8
-  basic_RBs: ResidualBlock_noBN_CSA
+  basic_RBs: ResidualBlock_noBN_CA
   front_RBs: 5
   back_RBs: 40
   predeblur: false

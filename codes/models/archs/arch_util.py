@@ -53,32 +53,39 @@ class ResidualBlock_noBN(nn.Module):
         return identity + out
 
 
-class ResidualBlock_noBN_CSA(nn.Module):
-    ''' Residual block w/o BN with channel and spatial module.
+class ResidualBlock_noBN_CA(nn.Module):
+    ''' Residual block w/o BN + channel attention
+    ---Conv-ReLU-Conv--——————————————----------|-------|
+    |              |--Average pool-FC-ReLU-FC--x------ concat-Conv-
+    |------------------------------------------------- |
     '''
-    expansion = 1
 
-    def __init__(self, nf=64, downsample=None, use_cbam=False, no_spatial=False):
-        super(ResidualBlock_noBN_CSA, self).__init__()
+    def __init__(self, nf=64):
+        super(ResidualBlock_noBN_CA, self).__init__()
+        reduction_ratio = 16
         self.conv1 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
         self.conv2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
-        self.downsample = downsample
-        if use_cbam:
-            self.cbam = CBAM(gate_channels=nf, reduction_ratio=16, no_spatial=no_spatial)
-        else:
-            self.cbam = None
+        self.conv3 = nn.Conv2d(3*nf, nf, 1, bias=True)
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(nf, nf // reduction_ratio, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(nf // reduction_ratio, nf, bias=False),
+            nn.Sigmoid()
+        )
 
         # initialization
-        initialize_weights([self.conv1, self.conv2])
+        initialize_weights([self.conv1, self.conv2, self.conv3, self.fc])
 
     def forward(self, x):
-        residual = x
-        out = F.relu(self.conv1(x), inplace=True)
+        identity = x
+        out = F.relu(self.conv1(x))
         out = self.conv2(out)
-        if self.cbam is not None:
-            out = self.cbam(out)
-        out += residual
-        return F.relu(out, inplace=True)
+        identity_out = out
+        B, C, _, _ = out.size()
+        att = self.fc(self.avg_pool(out).view(B, C)).view(B, C, 1, 1)
+        out = out * att.expand_as(out)
+        return self.conv3(torch.cat([identity, identity_out, out], dim=1))
 
 
 def flow_warp(x, flow, interp_mode='bilinear', padding_mode='zeros'):
