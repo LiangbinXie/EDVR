@@ -338,7 +338,7 @@ class EDVR(nn.Module):
 
         ## separate non-local operation after PCD module
         if self.non_local == 'after':
-            aligned_fea = Seperate_NonLocal(aligned_fea)
+            aligned_fea = self.non_local_block(aligned_fea)
 
         if not self.w_TSA:
             aligned_fea = aligned_fea.view(B, -1, H, W)
