@@ -249,6 +249,7 @@ class EDVR(nn.Module):
         elif basic_RBs == 'ResidualBLock_noBN_CA':
             self.Reconstruct_Block = functools.partial(arch_util.ResidualBLock_noBN_CA, nf=nf)
 
+        print(basic_RBs)
         pdb.set_trace()
         ### extract features (for each frame)
         if self.is_predeblur:
