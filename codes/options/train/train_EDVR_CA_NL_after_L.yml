@@ -1,5 +1,5 @@
 #### general settings
-name: 006_EDVRTSA_CA_scratch_lr1e-4_600k_REDS_LrCAR4S
+name: 007_EDVR_NL_after_TSA_CA_scratch_lr4e-4_600k_REDS_LrCAR4S
 use_tb_logger: true
 model: video_base
 distortion: sr
@@ -14,8 +14,8 @@ datasets:
     interval_list: [1]
     random_reverse: false
     border_mode: false
-    dataroot_GT: /harddrives/beta/lbxie/VSR_datasets/REDS/train_sharp_wval.lmdb
-    dataroot_LQ: /harddrives/beta/lbxie/VSR_datasets/REDS/train_sharp_bicubic_wval.lmdb
+    dataroot_GT: /data1/lbxie/Datasets/VSR_datasets/REDS/train_sharp_wval.lmdb
+    dataroot_LQ: /data1/lbxie/Datasets/VSR_datasets/REDS/train_sharp_bicubic_wval.lmdb
     cache_keys: REDS_trainval_keys.pkl
 
     N_frames: 5
@@ -31,8 +31,8 @@ datasets:
   val:
     name: REDS4
     mode: video_test
-    dataroot_GT: /harddrives/beta/lbxie/VSR_datasets/REDS4/GT
-    dataroot_LQ: /harddrives/beta/lbxie/VSR_datasets/REDS4/sharp_bicubic
+    dataroot_GT: /data1/lbxie/Datasets/VSR_datasets/REDS4/GT
+    dataroot_LQ: /data1/lbxie/Datasets/VSR_datasets/REDS4/sharp_bicubic
     cache_data: True
     N_frames: 5
     padding: new_info
