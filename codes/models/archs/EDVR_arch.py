@@ -231,7 +231,7 @@ class TSA_Fusion(nn.Module):
 
 
 class EDVR(nn.Module):
-    def __init__(self, nf=64, nframes=5, groups=8, basic_RBs='ResidualBLock_noBN', front_RBs=5,
+    def __init__(self, nf=64, nframes=5, groups=8, basic_RBs='ResidualBlock_noBN', front_RBs=5,
                  back_RBs=10, center=None, predeblur=False, HR_in=False, w_TSA=True, non_local=None):
         super(EDVR, self).__init__()
         self.nf = nf
@@ -244,13 +244,11 @@ class EDVR(nn.Module):
             self.non_local_block = Seperate_NonLocal()
 
         self.Feature_Block = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
-        if basic_RBs == 'ResidualBLock_noBN':
+        if basic_RBs == 'ResidualBlock_noBN':
             self.Reconstruct_Block = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
-        elif basic_RBs == 'ResidualBLock_noBN_CA':
+        elif basic_RBs == 'ResidualBlock_noBN_CA':
             self.Reconstruct_Block = functools.partial(arch_util.ResidualBLock_noBN_CA, nf=nf)
 
-        print(basic_RBs)
-        pdb.set_trace()
         ### extract features (for each frame)
         if self.is_predeblur:
             self.pre_deblur = Predeblur_ResNet_Pyramid(nf=nf, HR_in=self.HR_in)
