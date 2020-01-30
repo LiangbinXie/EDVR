@@ -4,26 +4,23 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import models.archs.arch_util as arch_util
-import models.archs.CBAM_arch as CBAM_util
 try:
     from models.archs.dcn.deform_conv import ModulatedDeformConvPack as DCN
 except ImportError:
     raise ImportError('Failed to import DCNv2 module.')
 
-import pdb
 
 class Predeblur_ResNet_Pyramid(nn.Module):
     def __init__(self, nf=128, HR_in=False):
         '''
         HR_in: True if the inputs are high spatial size
         '''
-
         super(Predeblur_ResNet_Pyramid, self).__init__()
         self.HR_in = True if HR_in else False
         if self.HR_in:
             self.conv_first_1 = nn.Conv2d(3, nf, 3, 1, 1, bias=True)
-            self.conv_first_2 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
-            self.conv_first_3 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
+            self.conv_first_2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+            self.conv_first_3 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
         else:
             self.conv_first = nn.Conv2d(3, nf, 3, 1, 1, bias=True)
         basic_block = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
@@ -60,35 +57,33 @@ class Predeblur_ResNet_Pyramid(nn.Module):
 
 
 class PCD_Align(nn.Module):
-    ''' Alignment module using Pyramid, Cascading and Deformable convolution
+    '''Alignment module using Pyramid, Cascading and Deformable concolution
     with 3 pyramid levels.
     '''
 
     def __init__(self, nf=64, groups=8):
-        super(PCD_Align, self).__init__()
         # L3: level 3, 1/4 spatial size
-        self.L3_offset_conv1 = nn.Conv2d(nf * 2, nf, 3, 1, 1, bias=True)  # concat for diff
+        self.L3_offset_conv1 = nn.Conv2d(nf*2, nf, 3, 1, 1, bias=True) # concat for diff
         self.L3_offset_conv2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
         self.L3_dcnpack = DCN(nf, nf, 3, stride=1, padding=1, dilation=1, deformable_groups=groups,
                               extra_offset_mask=True)
         # L2: level 2, 1/2 spatial size
-        self.L2_offset_conv1 = nn.Conv2d(nf * 2, nf, 3, 1, 1, bias=True)  # concat for diff
-        self.L2_offset_conv2 = nn.Conv2d(nf * 2, nf, 3, 1, 1, bias=True)  # concat for offset
+        self.L2_offset_conv1 = nn.Conv2d(nf*2, nf, 3, 1, 1, bias=True) # concat for diff
+        self.L2_offset_conv2 = nn.Conv2d(nf*2, nf, 3, 1, 1, bias=True) # concat for offset
         self.L2_offset_conv3 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
         self.L2_dcnpack = DCN(nf, nf, 3, stride=1, padding=1, dilation=1, deformable_groups=groups,
                               extra_offset_mask=True)
-        self.L2_fea_conv = nn.Conv2d(nf * 2, nf, 3, 1, 1, bias=True)  # concat for fea
+        self.L2_fea_conv = nn.Conv2d(nf*2, nf, 3, 1, 1, bias=True) # concat for fea
         # L1: level 1, original spatial size
-        self.L1_offset_conv1 = nn.Conv2d(nf * 2, nf, 3, 1, 1, bias=True)  # concat for diff
-        self.L1_offset_conv2 = nn.Conv2d(nf * 2, nf, 3, 1, 1, bias=True)  # concat for offset
+        self.L1_offset_conv1 = nn.Conv2d(nf*2, nf, 3, 1, 1, bias=True) # concat for diff
+        self.L1_offset_conv2 = nn.Conv2d(nf*2, nf, 3, 1, 1, bias=True) # concat for offset
         self.L1_offset_conv3 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
         self.L1_dcnpack = DCN(nf, nf, 3, stride=1, padding=1, dilation=1, deformable_groups=groups,
                               extra_offset_mask=True)
-        self.L1_fea_conv = nn.Conv2d(nf * 2, nf, 3, 1, 1, bias=True)  # concat for fea
+        self.L1_fea_conv = nn.Conv2d(nf*2, nf, 3, 1, 1, bias=True)
         # Cascading DCN
-        self.cas_offset_conv1 = nn.Conv2d(nf * 2, nf, 3, 1, 1, bias=True)  # concat for diff
+        self.cas_offset_conv1 = nn.Conv2d(nf*2, nf, 3, 1, 1, bias=True)
         self.cas_offset_conv2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
-
         self.cas_dcnpack = DCN(nf, nf, 3, stride=1, padding=1, dilation=1, deformable_groups=groups,
                                extra_offset_mask=True)
 
@@ -96,7 +91,7 @@ class PCD_Align(nn.Module):
 
     def forward(self, nbr_fea_l, ref_fea_l):
         '''align other neighboring frames to the reference frame in the feature level
-        nbr_fea_l, ref_fea_l: [L1, L2, L3], each with [B,C,H,W] features
+        nbr_fea_l, ref_fea_l: [L1, L2, L3], each with [B, C, H, W] features
         '''
         # L3
         L3_offset = torch.cat([nbr_fea_l[2], ref_fea_l[2]], dim=1)
@@ -117,10 +112,9 @@ class PCD_Align(nn.Module):
         L1_offset = self.lrelu(self.L1_offset_conv1(L1_offset))
         L2_offset = F.interpolate(L2_offset, scale_factor=2, mode='bilinear', align_corners=False)
         L1_offset = self.lrelu(self.L1_offset_conv2(torch.cat([L1_offset, L2_offset * 2], dim=1)))
-        L1_offset = self.lrelu(self.L1_offset_conv3(L1_offset))
         L1_fea = self.L1_dcnpack([nbr_fea_l[0], L1_offset])
         L2_fea = F.interpolate(L2_fea, scale_factor=2, mode='bilinear', align_corners=False)
-        L1_fea = self.L1_fea_conv(torch.cat([L1_fea, L2_fea], dim=1))
+        L1_fea = self.lrelu(self.L1_fea_conv(torch.cat([L1_fea, L2_fea], dim=1)))
         # Cascading
         offset = torch.cat([L1_fea, ref_fea_l[0]], dim=1)
         offset = self.lrelu(self.cas_offset_conv1(offset))
@@ -128,6 +122,36 @@ class PCD_Align(nn.Module):
         L1_fea = self.lrelu(self.cas_dcnpack([L1_fea, offset]))
 
         return L1_fea
+
+
+class Seperate_NonLocal(nn.Module):
+    ''' Separate non-local module
+        Spatial dimension, channel dimension, temporal dimension
+    '''
+
+    def __init__(self):
+        super(Seperate_NonLocal, self).__init__()
+
+    def forward(self, aligned_fea):
+        B, N, C, H, W = aligned_fea.size()  # N video frames
+        ## spatial dimension non-local
+        spatial_non_local = arch_util.NonLocalBlock2D(in_channels=C)
+        spatial_fea = spatial_non_local(aligned_fea.view(-1, C, H, W)) # [BxN, C, H, W]
+        spatial_fea = spatial_fea.view(B, N, C, H, W)
+
+        ## channel dimension non-local
+        channel_non_local = arch_util.NonLocalBlock1D(in_channels=H*W)
+        channel_fea = channel_non_local(aligned_fea.view(-1, C, H, W)) # [BxN, HxW, C]
+        channel_fea = channel_fea.view(B, N, -1, C).view(B, N, H, W, C) # [B, N, H, W, C]
+        channel_fea = channel_fea.permute(0, 1, 4, 2, 3).contiguous()
+
+        ## time dimension non-local
+        time_non_local = arch_util.NonLocalBlock1D(in_channels=H*W)
+        time_fea = time_non_local((aligned_fea.permute(0, 2, 1, 3, 4).contiguous()).view(-1, N, H, W))
+        time_fea = time_fea.view(B, C, -1, N).view(B, C, H, W, N) # [B, C, H, W, N]
+        time_fea = time_fea.permute(0, 4, 1, 2, 3)
+
+        return spatial_fea + channel_fea + time_fea
 
 
 class TSA_Fusion(nn.Module):
@@ -205,64 +229,26 @@ class TSA_Fusion(nn.Module):
         return fea
 
 
-# class TCSA_Fusion(nn.Module):
-#     ''' Temporal Channel Spatial Attention fusion module.
-#     '''
-#     def __init__(self, reduction_ratio, nf=64, nframes=5, center=2):
-#         self.center = center
-#         self.tAtt_1 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
-#         self.tAtt_2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
-#
-#         # fusion conv: using 1x1 to save parameters and computation
-#         self.fea_fusion = nn.Conv2d(nframes * nf, nf, 1, 1, bias=True)
-#
-#         #### channel and spatial module
-#         self.CBAM = CBAM_util.CBAM(nf, reduction_ratio=reduction_ratio)
-#         self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
-#
-#     def forward(self, aligned_fea):
-#         B, N, C, H, W = aligned_fea.size()
-#         #### temporal attention
-#         emb_ref = self.tAtt_2(aligned_fea[:, self.center, :, :, :].clone())  # [B, C(nf), H, W]
-#         embs = self.tAtt_1(aligned_fea.view(-1, C, H, W)).view(B, N, -1, H, W)  # [BxN, C, H, W]
-#         cor_l = []
-#         for i in range(N):
-#             emb_nbr = embs[:, i, :, :, :]  # [B, C, H, W]
-#             cor_tmp = torch.sum(emb_ref * emb_nbr, dim=1).unsqueeze(1)  # [B, H, W] --> [B, 1, H, W]
-#             cor_l.append(cor_tmp)  # [[B, 1, H, W], [B, 1, H, W]]
-#         cor_prob = torch.sigmoid(torch.cat(cor_l, dim=1))  # [B, N, H, W]
-#         # [B, N, 1, H, W]  --> [B, N, C, H, W] --> [BxN, C, H, W]
-#         cor_prob = cor_prob.unsqueeze(2).repeat(1, 1, C, 1, 1).view(B, -1, H, W)
-#         aligned_fea = cor_prob * aligned_fea.view(B, -1, H, W)
-#
-#         #### fusion
-#         fea = self.lrelu(self.fea_fusion(aligned_fea))
-#
-#         #### channel and spatial attention
-#         att_fea = self.CBAM(fea)
-#         return att_fea
-
-
 class EDVR(nn.Module):
-    def __init__(self, nf=64, nframes=5, groups=8, basic_RBs='ResidualBlock_noBN', front_RBs=5, back_RBs=10, center=None,
-                 predeblur=False, HR_in=False, w_TSA=True, w_TCSA=True):
+    def __init__(self, nf=64, nframes=5, groups=8, basic_RBs='ResidualBLock_noBN', front_RBs=5,
+                 back_RBs=10, center=None, predeblur=False, HR_in=False, w_TSA=True, non_local=None):
         super(EDVR, self).__init__()
         self.nf = nf
         self.center = nframes // 2 if center is None else center
         self.is_predeblur = True if predeblur else False
         self.HR_in = True if HR_in else False
         self.w_TSA = w_TSA
-        self.w_TCSA = w_TCSA
+        self.non_local = non_local
+        if self.non_local is not None:
+            self.non_local_block = Seperate_NonLocal()
 
-
-        Feature_Block_noBN_f = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
-
-        if basic_RBs == 'ResidualBlock_noBN':
+        self.Feature_Block = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
+        if basic_RBs == 'ResidualBLock_noBN':
             self.Reconstruct_Block = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
-        elif basic_RBs == 'ResidualBlock_noBN_CA':
-            self.Reconstruct_Block = functools.partial(arch_util.ResidualBlock_noBN_CA, nf=nf)
+        elif basic_RBs == 'ResidualBLock_noBN_CA':
+            self.Reconstruct_Block = functools.partial(arch_util.ResidualBLock_noBN_CA, nf=nf)
 
-        #### extract features (for each frame)
+        ### extract features (for each frame)
         if self.is_predeblur:
             self.pre_deblur = Predeblur_ResNet_Pyramid(nf=nf, HR_in=self.HR_in)
             self.conv_1x1 = nn.Conv2d(nf, nf, 1, 1, bias=True)
@@ -272,9 +258,9 @@ class EDVR(nn.Module):
                 self.conv_first_2 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
                 self.conv_first_3 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
             else:
-                self.conv_first = nn.Conv2d(3, nf, 3, 1, 1, bias=True)
-        # self.feature_extraction = arch_util.make_layer(ResidualBlock_noBN_f, front_RBs)
-        self.feature_extraction = arch_util.make_layer(Feature_Block_noBN_f, front_RBs)
+                self.conv_first = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+
+        self.feature_extraction = arch_util.make_layer(self.Feature_Block, front_RBs)
         self.fea_L2_conv1 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
         self.fea_L2_conv2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
         self.fea_L3_conv1 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
@@ -283,28 +269,23 @@ class EDVR(nn.Module):
         self.pcd_align = PCD_Align(nf=nf, groups=groups)
         if self.w_TSA:
             self.fusion = TSA_Fusion(nf=nf, nframes=nframes, center=self.center)
-            # self.tsa_fusion = TSA_Fusion(nf=nf, nframes=nframes, center=self.center)
-        # elif self.w_TCSA:
-        #     self.fusion = TCSA_Fusion(nf=nf, reduction_ratio=self.reduction_ratio)
-            # self.tcsa_fusion = TCSA_Fusion(nf=nf, reduction_ratio=self.reduction_ratio)
         else:
-            self.fusion = nn.Conv2d(nframes * nf, nf, 1, 1, bias=True)
-            # self.tsa_fusion = nn.Conv2d(nframes * nf, nf, 1, 1, bias=True)
+            self.fusion = nn.Conv2d(nframes*nf, nf, 1, 1, bias=True)
 
         #### reconstruction
         self.recon_trunk = arch_util.make_layer(self.Reconstruct_Block, back_RBs)
         #### upsampling
-        self.upconv1 = nn.Conv2d(nf, nf * 4, 3, 1, 1, bias=True)
-        self.upconv2 = nn.Conv2d(nf, 64 * 4, 3, 1, 1, bias=True)
+        self.upconv1 = nn.Conv2d(nf, nf*4, 3, 1, 1, bias=True)
+        self.upconv2 = nn.Conv2d(64, 64*4, 3, 1, 1, bias=True)
         self.pixel_shuffle = nn.PixelShuffle(2)
         self.HRconv = nn.Conv2d(64, 64, 3, 1, 1, bias=True)
         self.conv_last = nn.Conv2d(64, 3, 3, 1, 1, bias=True)
 
-        #### activation function
+        #### activatino
         self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
 
     def forward(self, x):
-        B, N, C, H, W = x.size()  # N video frames
+        B, N, C, H, W = x.size()
         x_center = x[:, self.center, :, :, :].contiguous()
 
         #### extract LR features
@@ -323,13 +304,17 @@ class EDVR(nn.Module):
             else:
                 L1_fea = self.lrelu(self.conv_first(x.view(-1, C, H, W)))
 
-        L1_fea = self.feature_extraction(L1_fea)
+        L1_fea = self.Feature_Block(L1_fea)
+        ## separate non-local operation before PCD module
+        if self.non_local == 'before':
+            L1_fea = self.non_local_block(L1_fea)
+
         # L2
         L2_fea = self.lrelu(self.fea_L2_conv1(L1_fea))
         L2_fea = self.lrelu(self.fea_L2_conv2(L2_fea))
         # L3
         L3_fea = self.lrelu(self.fea_L3_conv1(L2_fea))
-        L3_fea = self.lrelu(self.fea_L3_conv2(L3_fea))
+        L3_fea = self.lrelu(self.fea_L3_conv1(L3_fea))
 
         L1_fea = L1_fea.view(B, N, -1, H, W)
         L2_fea = L2_fea.view(B, N, -1, H // 2, W // 2)
@@ -337,7 +322,7 @@ class EDVR(nn.Module):
 
         #### pcd align
         # ref feature list
-        ref_fea_l = [
+        ref_fea_1 = [
             L1_fea[:, self.center, :, :, :].clone(), L2_fea[:, self.center, :, :, :].clone(),
             L3_fea[:, self.center, :, :, :].clone()
         ]
@@ -347,12 +332,15 @@ class EDVR(nn.Module):
                 L1_fea[:, i, :, :, :].clone(), L2_fea[:, i, :, :, :].clone(),
                 L3_fea[:, i, :, :, :].clone()
             ]
-            aligned_fea.append(self.pcd_align(nbr_fea_l, ref_fea_l))
+            aligned_fea.append(self.pcd_align(ref_fea_1, nbr_fea_l))
         aligned_fea = torch.stack(aligned_fea, dim=1)  # [B, N, C, H, W]
 
+        ## separate non-local operation after PCD module
+        if self.non_local == 'after':
+            aligned_fea = Seperate_NonLocal(aligned_fea)
+
         if not self.w_TSA:
-            aligned_fea = aligned_fea.view(B, -1, H, W)
-        # fea = self.tsa_fusion(aligned_fea)
+            aligned_fea = aligned_fea.view(-1, C, H, W)
         fea = self.fusion(aligned_fea)
 
         out = self.recon_trunk(fea)

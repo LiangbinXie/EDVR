@@ -88,6 +88,112 @@ class ResidualBlock_noBN_CA(nn.Module):
         return self.conv3(torch.cat([identity, identity_out, out], dim=1))
 
 
+# add NonLocalBlock2D
+# reference: https://github.com/AlexHex7/Non-local_pytorch/blob/master/lib/non_local_simple_version.py
+class NonLocalBlock2D(nn.Module):
+    def __init__(self, in_channels, inter_channels=None):
+        super(NonLocalBlock2D, self).__init__()
+
+        self.in_channels = in_channels
+        self.inter_channels = inter_channels
+        if self.inter_channels is None:
+            self.inter_channels = self.in_channels // 2
+            if self.inter_channels == 0:
+                self.inter_channels = 1
+
+        self.g = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
+
+        self.W = nn.Conv2d(in_channels=self.inter_channels, out_channels=self.in_channels, kernel_size=1, stride=1, padding=0)
+        # for pytorch 0.3.1
+        #nn.init.constant(self.W.weight, 0)
+        #nn.init.constant(self.W.bias, 0)
+        # for pytorch 0.4.0
+        nn.init.constant_(self.W.weight, 0)
+        nn.init.constant_(self.W.bias, 0)
+        self.theta = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
+
+        self.phi = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
+
+    def forward(self, x):
+
+        batch_size = x.size(0)
+
+        g_x = self.g(x).view(batch_size, self.inter_channels, -1)
+
+        g_x = g_x.permute(0,2,1).contiguous()
+
+        theta_x = self.theta(x).view(batch_size, self.inter_channels, -1)
+
+        theta_x = theta_x.permute(0,2,1).contiguous()
+
+        phi_x = self.phi(x).view(batch_size, self.inter_channels, -1)
+
+        f = torch.matmul(theta_x, phi_x)
+
+        f_div_C = F.softmax(f, dim=1)
+
+        y = torch.matmul(f_div_C, g_x)
+
+        y = y.permute(0,2,1).contiguous()
+        y = y.view(batch_size, self.inter_channels, *x.size()[2:])
+        W_y = self.W(y)
+        z = W_y + x
+        return z
+
+
+class NonLocalBlock1D(nn.Module):
+    def __init__(self, in_channels, inter_channels=None):
+        super(NonLocalBlock1D, self).__init__()
+
+        self.in_channels = in_channels
+        self.inter_channels = inter_channels
+        if self.inter_channels is None:
+            self.inter_channels = in_channels // 2
+            if self.inter_channels == 0:
+                self.inter_channels = 1
+
+        self.g = nn.Conv1d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
+
+        self.W = nn.Conv1d(in_channels=self.inter_channels, out_channels=self.in_channels, kernel_size=1, stride=1, padding=0)
+
+        # for pytorch 0.4.0
+        nn.init.constant_(self.W.weight, 0)
+        nn.init.constant_(self.W.bias, 0)
+        self.theta = nn.Conv1d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
+
+        self.phi = nn.Conv1d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
+
+    def forward(self, x):
+
+        B, C, H, W = x.size()
+        x = x.view(B, C, -1)  #[B, C, H, W] -> [B, C, HxW]
+        x = x.permute(0, 2, 1).contiguous() #[B, C, HxW] -> [B, HxW, C]
+
+
+        g_x = self.g(x).view(B, self.inter_channels, -1)
+
+        g_x = g_x.permute(0,2,1)
+
+        theta_x = self.theta(x).view(B, self.inter_channels, -1)
+
+        theta_x = theta_x.permute(0,2,1)
+
+        phi_x = self.phi(x).view(B, self.inter_channels, -1)
+
+        f = torch.matmul(theta_x, phi_x)
+
+        f_div_C = F.softmax(f, dim=1)
+
+        y = torch.matmul(f_div_C, g_x)
+
+        y = y.permute(0,2,1).contiguous()
+
+        y = y.view(B, self.inter_channels, *x.size()[2:])
+        W_y = self.W(y)
+        z = W_y + x
+        return z
+
+
 def flow_warp(x, flow, interp_mode='bilinear', padding_mode='zeros'):
     """Warp an image or feature map with optical flow
     Args:
