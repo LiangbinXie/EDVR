@@ -62,6 +62,7 @@ class PCD_Align(nn.Module):
     '''
 
     def __init__(self, nf=64, groups=8):
+        super(PCD_Align, self).__init__()
         # L3: level 3, 1/4 spatial size
         self.L3_offset_conv1 = nn.Conv2d(nf*2, nf, 3, 1, 1, bias=True) # concat for diff
         self.L3_offset_conv2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
