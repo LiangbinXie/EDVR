@@ -75,7 +75,8 @@ class ResidualBlock_noBN_CA(nn.Module):
         )
 
         # initialization
-        initialize_weights([self.conv1, self.conv2, self.conv3, self.fc])
+        initialize_weights([self.conv1, self.conv2, self.conv3], 0.1)
+        initialize_weights([self.fc])
 
     def forward(self, x):
         identity = x
@@ -108,11 +109,14 @@ class NonLocalBlock2D(nn.Module):
         #nn.init.constant(self.W.weight, 0)
         #nn.init.constant(self.W.bias, 0)
         # for pytorch 0.4.0
-        nn.init.constant_(self.W.weight, 0)
-        nn.init.constant_(self.W.bias, 0)
+
         self.theta = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
 
         self.phi = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
+
+        # initialization
+        initialize_weights([self.g, self.w, self.theta, self.phi])
+
 
     def forward(self, x):
 
@@ -153,15 +157,14 @@ class NonLocalBlock1D(nn.Module):
                 self.inter_channels = 1
 
         self.g = nn.Conv1d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
-
         self.W = nn.Conv1d(in_channels=self.inter_channels, out_channels=self.in_channels, kernel_size=1, stride=1, padding=0)
-
         # for pytorch 0.4.0
-        nn.init.constant_(self.W.weight, 0)
-        nn.init.constant_(self.W.bias, 0)
+        # nn.init.constant_(self.W.weight, 0)
+        # nn.init.constant_(self.W.bias, 0)
         self.theta = nn.Conv1d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
-
         self.phi = nn.Conv1d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
+        # initialization
+        initialize_weights([self.g, self.w, self.theta, self.phi])
 
     def forward(self, x):
 
