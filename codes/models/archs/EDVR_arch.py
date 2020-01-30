@@ -60,7 +60,6 @@ class PCD_Align(nn.Module):
     '''Alignment module using Pyramid, Cascading and Deformable concolution
     with 3 pyramid levels.
     '''
-
     def __init__(self, nf=64, groups=8):
         super(PCD_Align, self).__init__()
         # L3: level 3, 1/4 spatial size
