@@ -259,7 +259,7 @@ class EDVR(nn.Module):
                 self.conv_first_2 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
                 self.conv_first_3 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
             else:
-                self.conv_first = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+                self.conv_first = nn.Conv2d(3, nf, 3, 1, 1, bias=True)
 
         self.feature_extraction = arch_util.make_layer(self.Feature_Block, front_RBs)
         self.fea_L2_conv1 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
