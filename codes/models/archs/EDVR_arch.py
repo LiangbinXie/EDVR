@@ -277,7 +277,7 @@ class EDVR(nn.Module):
         self.recon_trunk = arch_util.make_layer(self.Reconstruct_Block, back_RBs)
         #### upsampling
         self.upconv1 = nn.Conv2d(nf, nf*4, 3, 1, 1, bias=True)
-        self.upconv2 = nn.Conv2d(64, 64*4, 3, 1, 1, bias=True)
+        self.upconv2 = nn.Conv2d(nf, 64*4, 3, 1, 1, bias=True)
         self.pixel_shuffle = nn.PixelShuffle(2)
         self.HRconv = nn.Conv2d(64, 64, 3, 1, 1, bias=True)
         self.conv_last = nn.Conv2d(64, 3, 3, 1, 1, bias=True)
@@ -305,7 +305,7 @@ class EDVR(nn.Module):
             else:
                 L1_fea = self.lrelu(self.conv_first(x.view(-1, C, H, W)))
 
-        L1_fea = self.Feature_Block(L1_fea)
+        L1_fea = self.feature_extraction(L1_fea)
         ## separate non-local operation before PCD module
         if self.non_local == 'before':
             L1_fea = self.non_local_block(L1_fea)
@@ -315,7 +315,7 @@ class EDVR(nn.Module):
         L2_fea = self.lrelu(self.fea_L2_conv2(L2_fea))
         # L3
         L3_fea = self.lrelu(self.fea_L3_conv1(L2_fea))
-        L3_fea = self.lrelu(self.fea_L3_conv1(L3_fea))
+        L3_fea = self.lrelu(self.fea_L3_conv2(L3_fea))
 
         L1_fea = L1_fea.view(B, N, -1, H, W)
         L2_fea = L2_fea.view(B, N, -1, H // 2, W // 2)
@@ -333,7 +333,7 @@ class EDVR(nn.Module):
                 L1_fea[:, i, :, :, :].clone(), L2_fea[:, i, :, :, :].clone(),
                 L3_fea[:, i, :, :, :].clone()
             ]
-            aligned_fea.append(self.pcd_align(ref_fea_1, nbr_fea_l))
+            aligned_fea.append(self.pcd_align(nbr_fea_l, ref_fea_1))
         aligned_fea = torch.stack(aligned_fea, dim=1)  # [B, N, C, H, W]
 
         ## separate non-local operation after PCD module
@@ -341,7 +341,7 @@ class EDVR(nn.Module):
             aligned_fea = Seperate_NonLocal(aligned_fea)
 
         if not self.w_TSA:
-            aligned_fea = aligned_fea.view(-1, C, H, W)
+            aligned_fea = aligned_fea.view(B, -1, H, W)
         fea = self.fusion(aligned_fea)
 
         out = self.recon_trunk(fea)
