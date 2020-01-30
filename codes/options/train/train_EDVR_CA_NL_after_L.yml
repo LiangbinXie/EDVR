@@ -49,7 +49,7 @@ network_G:
   predeblur: false
   HR_in: false
   w_TSA: True
-  non_local: after
+  # non_local: after
 
 
 #### path
