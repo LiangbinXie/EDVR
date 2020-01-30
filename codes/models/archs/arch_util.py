@@ -115,7 +115,7 @@ class NonLocalBlock2D(nn.Module):
         self.phi = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
 
         # initialization
-        initialize_weights([self.g, self.w, self.theta, self.phi])
+        initialize_weights([self.g, self.W, self.theta, self.phi])
 
 
     def forward(self, x):
@@ -164,7 +164,7 @@ class NonLocalBlock1D(nn.Module):
         self.theta = nn.Conv1d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
         self.phi = nn.Conv1d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
         # initialization
-        initialize_weights([self.g, self.w, self.theta, self.phi])
+        initialize_weights([self.g, self.W, self.theta, self.phi])
 
     def forward(self, x):
 
