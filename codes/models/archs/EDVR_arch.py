@@ -287,7 +287,6 @@ class EDVR(nn.Module):
 
     def forward(self, x):
         B, N, C, H, W = x.size()
-        print(B, N, C, H, W)
         x_center = x[:, self.center, :, :, :].contiguous()
 
         #### extract LR features
