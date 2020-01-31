@@ -76,7 +76,7 @@ class ResidualBlock_noBN_CA(nn.Module):
 
         # initialization
         initialize_weights([self.conv1, self.conv2, self.conv3], 0.1)
-        initialize_weights([self.fc])
+        initialize_weights([self.fc], 0.1)
 
     def forward(self, x):
         identity = x
@@ -103,12 +103,10 @@ class NonLocalBlock2D(nn.Module):
                 self.inter_channels = 1
 
         self.g = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
-        self.g.weight.type(torch.cuda.FloatTensor)
-        self.g.bias.type(torch.cuda.FloatTensor)
         self.W = nn.Conv2d(in_channels=self.inter_channels, out_channels=self.in_channels, kernel_size=1, stride=1, padding=0)
         # for pytorch 0.3.1
-        nn.init.constant(self.W.weight, 0)
-        nn.init.constant(self.W.bias, 0)
+        nn.init.constant_(self.W.weight, 0)
+        nn.init.constant_(self.W.bias, 0)
         # for pytorch 0.4.0
 
         self.theta = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
@@ -124,7 +122,6 @@ class NonLocalBlock2D(nn.Module):
         batch_size = x.size(0)
 
         g_x = self.g(x)
-        print('***************')
         g_x = g_x.view(batch_size, self.inter_channels, -1)
 
         g_x = g_x.permute(0,2,1).contiguous()
