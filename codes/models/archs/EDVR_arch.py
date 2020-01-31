@@ -343,8 +343,10 @@ class EDVR(nn.Module):
 
         ## separate non-local operation after PCD module
         if self.non_local == 'after':
-            aligned_fea = aligned_fea.view(-1, *aligned_fea.size()[2:])
-            aligned_fea = self.spatial_non_local(aligned_fea).view(*aligned_fea.size())
+            aligned_fea_B, aligned_fea_N, aligned_fea_C, aligned_fea_H, aligned_fea_W = aligned_fea.size()
+            aligned_fea = aligned_fea.view(-1, aligned_fea_C, aligned_fea_H, aligned_fea_W)
+            aligned_fea = self.spatial_non_local(aligned_fea).view(aligned_fea_B, aligned_fea_N,
+                                                                   aligned_fea_C, aligned_fea_H, aligned_fea_W)
 
         if not self.w_TSA:
             aligned_fea = aligned_fea.view(B, -1, H, W)
