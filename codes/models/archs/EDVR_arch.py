@@ -136,7 +136,7 @@ class Seperate_NonLocal(nn.Module):
 
     def __init__(self, nf):
         super(Seperate_NonLocal, self).__init__()
-        self.spatial_non_local = functools.partial(arch_util.NonLocalBlock2D, in_channels=nf)
+        self.spatial_non_local = functools.partial(arch_util.NonLocalBlock2D, in_channels=nf, inter_channels=None)
 
     def forward(self, aligned_fea):
         B, N, C, H, W = aligned_fea.size()  # N video frames
