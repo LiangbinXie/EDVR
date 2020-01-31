@@ -22,7 +22,7 @@ datasets:
     use_shuffle: true
     n_workers: 3  # per GPU
     # batch_size: 64
-    batch_size: 32
+    batch_size: 16
     GT_size: 256
     LQ_size: 64
     use_flip: true
@@ -40,7 +40,7 @@ datasets:
 #### network structures
 network_G:
   which_model_G: EDVR
-  nf: 128
+  nf: 64
   nframes: 5
   groups: 8
   basic_RBs: ResidualBlock_noBN_CA
@@ -49,7 +49,7 @@ network_G:
   predeblur: false
   HR_in: false
   w_TSA: True
-  # non_local: after
+  non_local: after
 
 
 #### path
