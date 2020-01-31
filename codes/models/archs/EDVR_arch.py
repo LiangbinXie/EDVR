@@ -129,21 +129,21 @@ class PCD_Align(nn.Module):
         return L1_fea
 
 
-class Seperate_NonLocal(nn.Module):
-    ''' Separate non-local module
-        Spatial dimension, channel dimension, temporal dimension
-    '''
-
-    def __init__(self, nf):
-        super(Seperate_NonLocal, self).__init__()
-        self.spatial_non_local = functools.partial(arch_util.NonLocalBlock2D, in_channels=nf, inter_channels=None)
-
-    def forward(self, aligned_fea):
-        B, N, C, H, W = aligned_fea.size()  # N video frames
-        ## spatial dimension non-local
-
-        spatial_fea = self.spatial_non_local(aligned_fea.view(-1, C, H, W)) # [BxN, C, H, W]
-        spatial_fea = spatial_fea.view(B, N, C, H, W)
+# class Seperate_NonLocal(nn.Module):
+#     ''' Separate non-local module
+#         Spatial dimension, channel dimension, temporal dimension
+#     '''
+#
+#     def __init__(self, nf):
+#         super(Seperate_NonLocal, self).__init__()
+#         self.spatial_non_local = arch_util.NonLocalBlock2D(in_channels=nf)
+#
+#     def forward(self, aligned_fea):
+#         B, N, C, H, W = aligned_fea.size()  # N video frames
+#         ## spatial dimension non-local
+#
+#         spatial_fea = self.spatial_non_local(aligned_fea.view(-1, C, H, W)) # [BxN, C, H, W]
+#         spatial_fea = spatial_fea.view(B, N, C, H, W)
 
         ## channel dimension non-local
         # channel_non_local = arch_util.NonLocalBlock1D(in_channels=H*W)
@@ -158,7 +158,7 @@ class Seperate_NonLocal(nn.Module):
         # time_fea = time_fea.permute(0, 4, 1, 2, 3)
 
         # return spatial_fea + channel_fea + time_fea
-        return spatial_fea
+        # return spatial_fea
 
 class TSA_Fusion(nn.Module):
     ''' Temporal Spatial Attention fusion module
@@ -246,7 +246,8 @@ class EDVR(nn.Module):
         self.w_TSA = w_TSA
         self.non_local = non_local
         if self.non_local is not None:
-            self.non_local_block = Seperate_NonLocal(nf=nf)
+            self.spatial_non_local = arch_util.NonLocalBlock2D(in_channels=nf)
+            # self.non_local_block = Seperate_NonLocal(nf=nf)
 
         self.Feature_Block = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
         if basic_RBs == 'ResidualBlock_noBN':
@@ -311,8 +312,8 @@ class EDVR(nn.Module):
                 L1_fea = self.lrelu(self.conv_first(x.view(-1, C, H, W)))
         L1_fea = self.feature_extraction(L1_fea)
         ## separate non-local operation before PCD module
-        if self.non_local == 'before':
-            L1_fea = self.non_local_block(L1_fea)
+        # if self.non_local == 'before':
+        #     L1_fea = self.non_local_block(L1_fea)
 
         # L2
         L2_fea = self.lrelu(self.fea_L2_conv1(L1_fea))
@@ -343,7 +344,8 @@ class EDVR(nn.Module):
         ## separate non-local operation after PCD module
         if self.non_local == 'after':
             print('Aligned_fea: ', type(aligned_fea))
-            aligned_fea = self.non_local_block(aligned_fea)
+            aligned_fea = aligned_fea.view(-1, C, H, W)
+            aligned_fea = self.non_local_block(aligned_fea).view(B, N, C, H, W)
 
         if not self.w_TSA:
             aligned_fea = aligned_fea.view(B, -1, H, W)
