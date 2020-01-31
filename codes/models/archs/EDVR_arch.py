@@ -344,6 +344,7 @@ class EDVR(nn.Module):
         ## separate non-local operation after PCD module
         if self.non_local == 'after':
             print('Aligned_fea: ', type(aligned_fea))
+            print('Aligned_fea size: ', aligned_fea.size())
             aligned_fea = aligned_fea.view(-1, C, H, W)
             aligned_fea = self.non_local_block(aligned_fea).view(B, N, C, H, W)
 
