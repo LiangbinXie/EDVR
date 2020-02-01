@@ -32,6 +32,12 @@ def make_layer(block, n_layers):
     return nn.Sequential(*layers)
 
 
+def default_conv(in_channels, out_channels, kernel_size, bias=True):
+    return nn.Conv2d(
+        in_channels, out_channels, kernel_size,
+        padding=(kernel_size//2), bias=bias)
+
+
 class ResidualBlock_noBN(nn.Module):
     '''Residual block w/o BN
     ---Conv-ReLU-Conv-+-
@@ -53,40 +59,49 @@ class ResidualBlock_noBN(nn.Module):
         return identity + out
 
 
-class ResidualBlock_noBN_CA(nn.Module):
-    ''' Residual block w/o BN + channel attention
-    ---Conv-ReLU-Conv--——————————————----------|-------|
-    |              |--Average pool-FC-ReLU-FC--x------ concat-Conv-
-    |------------------------------------------------- |
-    '''
-
-    def __init__(self, nf=64):
-        super(ResidualBlock_noBN_CA, self).__init__()
-        reduction_ratio = 16
-        self.conv1 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
-        self.conv2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
-        self.conv3 = nn.Conv2d(3*nf, nf, 1, bias=True)
+## Channel Attention (CA) Layer
+class CALayer(nn.Module):
+    def __init__(self, nf, reduction=16):
+        super(CALayer, self).__init__()
+        # global average pooling: feature -> point
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Sequential(
-            nn.Linear(nf, nf // reduction_ratio, bias=False),
+        # feature channel downscale and upscale --> channel weight.
+        self.conv_du = nn.Sequential(
+            nn.Conv2d(nf, nf // reduction, 1, padding=0, bias=True),
             nn.ReLU(inplace=True),
-            nn.Linear(nf // reduction_ratio, nf, bias=False),
+            nn.Conv2d(nf // reduction, nf, 1, padding=0, bias=True),
             nn.Sigmoid()
         )
 
-        # initialization
-        initialize_weights([self.conv1, self.conv2, self.conv3], 0.1)
-        initialize_weights([self.fc], 0.1)
+    def forward(self, x):
+        y = self.avg_pool(x)
+        y = self.conv_du(y)
+        return x * y
+
+
+class RCAN(nn.Module):
+    ''' Residual Channel Attention Block
+    ---Conv-ReLU-Conv--——————————————-------------------x-------+---
+    |                 |--Avgpool-conv-ReLU-conv-sigmoid-|       |
+    |-----------------------------------------------------------|
+    '''
+
+    def __init__(self, conv, nf, kernel_size, reduction, bias=True,
+                 bn=False, act=nn.ReLU(True), res_scale=1):
+        super(RCAN, self).__init__()
+        modules_body = []
+        for i in range(2):
+            modules_body.append(conv(nf, nf, kernel_size, bias=bias))
+            if bn: modules_body.append(nn.BatchNorm2d(nf))
+            if i == 0: modules_body.append(act)
+        modules_body.append(CALayer(nf, reduction))
+        self.body = nn.Sequential(*modules_body)
+        self.res_scale = res_scale
 
     def forward(self, x):
-        identity = x
-        out = F.relu(self.conv1(x))
-        out = self.conv2(out)
-        identity_out = out
-        B, C, _, _ = out.size()
-        att = self.fc(self.avg_pool(out).view(B, C)).view(B, C, 1, 1)
-        out = out * att.expand_as(out)
-        return self.conv3(torch.cat([identity, identity_out, out], dim=1))
+        res = self.body(x)
+        res += x
+        return  res
 
 
 # add NonLocalBlock2D

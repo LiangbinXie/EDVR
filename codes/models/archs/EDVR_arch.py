@@ -235,7 +235,7 @@ class TSA_Fusion(nn.Module):
 
 
 class EDVR(nn.Module):
-    def __init__(self, nf=64, nframes=5, groups=8, basic_RBs='ResidualBlock_noBN', front_RBs=5,
+    def __init__(self, nf=64, nframes=5, groups=8, basic_RBs='RCAN', front_RBs=5,
                  back_RBs=10, center=None, predeblur=False, HR_in=False, w_TSA=True, non_local=None):
         super(EDVR, self).__init__()
         self.nf = nf
@@ -250,8 +250,9 @@ class EDVR(nn.Module):
         self.Feature_Block = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
         if basic_RBs == 'ResidualBlock_noBN':
             self.Reconstruct_Block = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
-        elif basic_RBs == 'ResidualBlock_noBN_CA':
-            self.Reconstruct_Block = functools.partial(arch_util.ResidualBlock_noBN_CA, nf=nf)
+        elif basic_RBs == 'RCAN':
+            self.Reconstruct_Block = functools.partial(arch_util.RCAN, conv=arch_util.default_conv, nf=nf,
+                                                       kernel_size=3)
 
         ### extract features (for each frame)
         if self.is_predeblur:
