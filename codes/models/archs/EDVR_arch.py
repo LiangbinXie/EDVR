@@ -252,7 +252,7 @@ class EDVR(nn.Module):
             self.Reconstruct_Block = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
         elif basic_RBs == 'RCAN':
             self.Reconstruct_Block = functools.partial(arch_util.RCAN, conv=arch_util.default_conv, nf=nf,
-                                                       kernel_size=3)
+                                                       kernel_size=3, reduction=16)
 
         ### extract features (for each frame)
         if self.is_predeblur:
